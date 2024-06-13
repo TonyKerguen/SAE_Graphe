@@ -6,7 +6,6 @@ Code diffusé aux étudiants de BUT1 dans le cadre de la SAE 2.02: Exploration a
 IUT d'Orleans BUT1 Informatique 2021-2022 
 """
 import json
-import matplotlib.pyplot as plt
 import networkx as nx
 
 # Q1
@@ -17,74 +16,34 @@ def renommage(nom):
         nom: nom de l'acteur
     """
     elem = "[']"
-    for x in range(len(elem)):
-        nom = nom.replace(elem[x],"")
+    for x in elem:
+        nom = nom.replace(x,"")
     v = nom.split("|")
     nom = v[-1]
     return nom
 
-# def json_vers_nx(chemin):
-#     """Fonction renvoyant le Graph à partir du chemin d'un fichier texte
-
-#     Parametres:
-#         fichier : le chemin d'un fichier.txt
-#     """
-#     G = nx.Graph()
-#     data = open(chemin,'r',encoding = "utf-8")
-#     for ligne in data:
-#         film = json.loads(ligne)
-#         acteurs = film['cast']
-#         for i in range(len(acteurs)):
-#             for j in range(i + 1, len(acteurs)):
-#                 G.add_edge(renommage(acteurs[i]) , renommage(acteurs[j]))
-#     nx.draw(G)
-#     plt.show()
-#     return G   
-
-# json_vers_nx("data_100.txt")
-# print(json_vers_nx("data_100.txt").edges)
-
-def convertisseur():
-    """Fonction renvoyant le Graph à partir d'un fichier texte
+def json_vers_nx(chemin):
+    """Fonction renvoyant le Graph à partir du chemin d'un fichier texte
 
     Parametres:
-        fichier : un fichier .txt
+        fichier : le chemin d'un fichier.txt
     """
-    # Création du graph
     G = nx.Graph()
-    #Lecture du fichier text
-    fic = open('test.txt','r',encoding = "utf-8")
-    # Parcour du fichier par ligne
-    # for lignes in fic:  
-    #     # Initialisation automatique du dictionnaire à partir des données du fichier pour chaque film
-    #     dico = json.loads(lignes)
-        
-    #     # Parcours du dictionnaire des acteurs 
-    #     for i in range (len(dico["cast"])):
-    #         # Remplace le nom des acteurs et les remets au propre
-    #         dico["cast"][i] = enlever_elem(dico["cast"][i])
-    #         #S'il n'est pas déjà dans le Graph, le mettre
-    #         if dico["cast"][i] not in G:
-    #             G.add_node(dico["cast"][i],label='A')
-
-    #     #Pour chaque acteur former un lien entre eux dans le Graph pour signifier qu'ils ont travaillé ensemble 
-    #     for acteur1 in dico["cast"]:
-    #         for acteur2 in dico["cast"]:
-    #             if (acteur1,acteur2) not in G and acteur1 != acteur2:
-    #                 G.add_edge(acteur1,acteur2)
-    # Dessiner et afficher le Graph
-
-    for ligne in fic:
+    data = open(chemin,'r',encoding = "utf-8")
+    for ligne in data:
         film = json.loads(ligne)
         acteurs = film['cast']
         for i in range(len(acteurs)):
             for j in range(i + 1, len(acteurs)):
-                G.add_edge(acteurs[i] , acteurs[j])
-    nx.draw(G,with_labels = True)
-    plt.show()
-    return G 
+                G.add_edge(renommage(acteurs[i]) , renommage(acteurs[j]))
+    # nx.draw(G)
+    # plt.show()
+    return G   
 
-print(convertisseur())
+G1 = json_vers_nx("data_100.txt")
+
+# print(json_vers_nx("data_100.txt"))
+# print(json_vers_nx("data_100.txt").nodes)
 
 
 # Q2
@@ -96,7 +55,11 @@ def collab_commun(G, acteur1, acteur2):
         acteur1 : un acteur
         acteur2 : un acteur
     """
-    return set(G.adj[acteur1]).intersection(G.adj[acteur2])
+    if acteur1 not in G.nodes or acteur2 not in G.nodes:
+        return None
+    return set(G.neighbors(acteur1)).intersection(G.neighbors(acteur2))
+
+# print(collab_commun(G1, "Toto", "Titi"))
 
 
 # Q3
@@ -108,19 +71,22 @@ def collaborateurs_proches(G,u,k):
         u: le sommet de départ
         k: la distance depuis u
     """
-    if u not in G.nodes:
-        return None
-    collaborateurs = set()
-    collaborateurs.add(u)
-    print(collaborateurs)
-    for i in range(k):
-        collaborateurs_directs = set()
-        for c in collaborateurs:
-            for voisin in G.adj[c]:
-                if voisin not in collaborateurs:
-                    collaborateurs_directs.add(voisin)
-        collaborateurs.update(collaborateurs_directs)
+    collaborateurs = {u}
+    proches = set(G.neighbors(u))  # Initialisation avec les voisins directs
+    while k > 0:
+        collaborateurs.update(proches)
+        nouveaux_proches = set()
+        for c in proches:
+            nouveaux_proches.update(set(G.neighbors(c)) - collaborateurs)
+        proches = nouveaux_proches
+        k -= 1
     return collaborateurs
+
+# print(collaborateurs_proches(G1,"Toto",0)) # {'Toto'}
+# print(collaborateurs_proches(G1,"Toto",1)) # {'Tata', 'Toto'}
+# print(collaborateurs_proches(G1,"Toto",2)) # {'Toto', 'Titi', 'Tata'}
+# print(collaborateurs_proches(G1,"Toto",3)) # {'Titi', 'Toto', 'Tata', 'Tutu'}
+
 
 def est_proche(G,u,v,k=1):
     """Fonction renvoyant True si l'acteur v est à distance au plus k de l'acteur u dans le graphe G. La fonction renvoie False si u ou v est absent du graphe.
@@ -131,11 +97,11 @@ def est_proche(G,u,v,k=1):
         v: le sommet d'arrivée
         k: la distance depuis u
     """
-    if u not in G.nodes or v not in G.nodes:
-        return False
     return v in collaborateurs_proches(G,u,k)
 
-# def distance_naive(G,u,v):
+# print(est_proche(G1,"Toto","Tata",0)) # False
+# print(est_proche(G1,"Toto","Tata",1)) # True
+
 
 def distance(G,u,v):
     """Fonction renvoyant la distance entre l'acteur u et l'acteur v dans le graphe G. La fonction renvoie None si u ou v est absent du graphe.
@@ -145,21 +111,81 @@ def distance(G,u,v):
         u: le sommet de départ
         v: le sommet d'arrivée
     """
-    if u not in G.nodes or v not in G.nodes:
-        return None
     if u == v:
         return 0
     distance = 0
-    parcourus = set()
-    parcourus.add(u)
+    parcourus = {u}
     while v not in parcourus:
         distance += 1
         nouveaux = set()
         for c in parcourus:
-            for voisin in G.adj[c]:
+            for voisin in G.neighbors(c):
                 if voisin not in parcourus:
                     nouveaux.add(voisin)
         parcourus.update(nouveaux)
         if len(nouveaux) == 0:
             return None
     return distance
+
+# print(distance(G1,"Toto","Tata")) # 1
+# print(distance(G1,"Toto","Titi")) # 2
+# print(distance(G1,"Toto","Tutu")) # 3
+# print(distance(G1,"Tata","Titi")) # 1
+
+
+def centralite(G, u):
+    """
+    Calcule la centralité d'un acteur, c'est-à-dire la plus grande distance entre cet acteur et tous les autres acteurs du graphe.
+    
+    :param G: Graphe Networkx des collaborations.
+    :param u: Acteur/actrice pour lequel on calcule la centralité.
+    :return: Centralité de l'acteur ou None si l'acteur n'est pas dans le graphe.
+    """
+    visites = {u}
+    noeud_actuels = {u}
+    max_distance = 0
+    while noeud_actuels:
+        prochain_noeud = set()
+        nouveau_voisin_trouve = False
+        for acteur in noeud_actuels:
+            for voisin in G.neighbors(acteur):
+                if voisin not in visites:
+                    prochain_noeud.add(voisin)
+                    visites.add(voisin)
+                    nouveau_voisin_trouve = True
+        if nouveau_voisin_trouve:
+            max_distance += 1
+        noeud_actuels = prochain_noeud
+    return max_distance
+
+# print(centralite(G1, "Toto")) # 3
+
+
+def centre_hollywood(G):
+    """
+    Détermine l'acteur le plus central du graphe, c'est-à-dire celui avec la plus petite centralité.
+    
+    :param G: Graphe Networkx des collaborations.
+    :return: Acteur le plus central du graphe.
+    """
+    centralites = {u: centralite(G, u) for u in G.nodes()}
+    acteur_central = min(centralites, key=centralites.get)
+    centralite_max = centralites[acteur_central]
+    return acteur_central, centralite_max
+
+# print(centre_hollywood(G1)) # ('Tata', 2)
+
+
+def eloignement_max(G):
+    """
+    Calcule la distance maximale entre deux acteurs dans le graphe.
+    
+    :param G: Graphe Networkx des collaborations.
+    :return: Distance maximale entre deux acteurs.
+    """
+    centralites = {u: centralite(G, u) for u in G.nodes()}
+    acteur_peripherique = max(centralites, key=centralites.get)
+    centralite_min = centralites[acteur_peripherique]
+    return acteur_peripherique, centralite_min
+
+# print(eloignement_max(G1)) # ('Toto', 3)
